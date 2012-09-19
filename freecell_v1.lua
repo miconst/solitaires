@@ -83,8 +83,6 @@ for r = 1, RANK_NUM do
     push(CARDS, RANKS:sub(r, r) .. SUITS:sub(s, s))
   end
 end
---~ print(concat(CARDS,','))
---~ do return end
 
 CARD_NUM = SUIT_NUM * RANK_NUM
 
@@ -143,7 +141,6 @@ function deal_by_number(desk, n)
 --~         n = (a * n + c) % m
         local bits_n = bits_add(bits_mul(a, tobits(n)), c)
         n = bits_tonumber(bits_n, 1, math.min(31, #bits_n))  -- modulus of 2^31
---~         print("!", n)
         push(desk[i], pop(cards, 1 + (n % #cards)))
       end
     end
