@@ -13,13 +13,13 @@ interface FreecellConstants {
   // Ranks
   static final String RANKS = "A23456789TJQK";
   static final int RANK_NUM = 13;
-  
+
   // Cards
   // Card_Index is defined as:
   // suit + rank * SUIT_NUM
   static final int CARD_NUM = SUIT_NUM * RANK_NUM;
   static String[] CARDS = new String[CARD_NUM]; // will be initialized in the main class
-  
+
   static final int
     PILE_NUM = 8, // cascades
     CELL_NUM = 4, // open cells
@@ -36,29 +36,23 @@ interface FreecellConstants {
     BASE_END = BASE_START + BASE_NUM;
 };
 
-//~ PILE_RANGE = range(PILE_START, PILE_END)
-//~ CELL_RANGE = range(CELL_START, CELL_END)
-//~ BASE_RANGE = range(BASE_START, BASE_END)
-//~ PLAY_RANGE = range(PILE_START, CELL_END)
-//~ DESK_RANGE = range(DESK_SIZE)
-
+@SuppressWarnings("unchecked")
 class Desk implements FreecellConstants {
   Stack< Integer > mDesk[];
-  
+
   Desk() {
     mDesk = new Stack[DESK_SIZE];
     for( int i = 0; i < DESK_SIZE; i++ ) {
-      mDesk[i] = new Stack();
+      mDesk[i] = new Stack< Integer >();
     }
   }
-  
+
   void reset() {
     for( Stack pile : mDesk ) {
       pile.clear();
     }
   }
-  
-  @SuppressWarnings("unchecked")
+
   void deal_by_number( int n ) {
     reset();
     // use LCG algorithm to pick up cards from the deck
@@ -66,8 +60,8 @@ class Desk implements FreecellConstants {
     long m = 0x80000000;  // 2 ^ 31
     long a = 1103515245;
     long c = 12345;
-    
-    Vector< Integer > cards = new Vector();
+
+    Vector< Integer > cards = new Vector< Integer >();
     for( int i = 0; i < CARD_NUM; i++ ) {
       cards.add( Integer.valueOf( i ) );
     }
@@ -82,20 +76,20 @@ class Desk implements FreecellConstants {
       }
     }
   }
-  
+
   @ Override
   public String toString() {
     String[] desk = new String[ DESK_SIZE ];
     for( int i = 0; i < DESK_SIZE; i++ ) {
       desk[ i ] = mDesk[ i ].toString();
     }
-    
+
     // sort cascades and cells
     Arrays.sort( desk, PILE_START, PILE_END );
     Arrays.sort( desk, CELL_START, CELL_END );
     return Arrays.toString( desk );
   }
-  
+
   int get_empty_pile() {
     for( int i = PILE_START; i < PILE_END; i++ ) {
       if( mDesk[i].isEmpty() ) {
@@ -113,7 +107,7 @@ class Desk implements FreecellConstants {
     }
     return -1;
   }
-  
+
   int get_base_key() {
     int s = mDesk[BASE_START +   SPADES].size();
     int d = mDesk[BASE_START + DIAMONDS].size();
@@ -121,17 +115,17 @@ class Desk implements FreecellConstants {
     int h = mDesk[BASE_START +   HEARTS].size();
     return ((s * RANK_NUM + d) * RANK_NUM + c) * RANK_NUM + h;
   }
-  
+
   String get_pile_key() {
     String[] keys = new String[ PILE_NUM ];
     for( int i = PILE_START; i < PILE_END; i++ ) {
       keys[i] = mDesk[i].toString();
     }
-    
+
     Arrays.sort( keys );
     return Arrays.toString( keys );
   }
-  
+
   int count_empty_cells() {
     int n = 0;
     for( int i = PILE_START; i < CELL_END; i++ ) {
@@ -141,7 +135,7 @@ class Desk implements FreecellConstants {
     }
     return n;
   }
-  
+
   int count_base_cards() {
     int n = 0;
     for( int i = BASE_START; i < BASE_END; i++ ) {
@@ -149,7 +143,7 @@ class Desk implements FreecellConstants {
     }
     return n;
   }
-  
+
   boolean is_empty() {
     for( int i = PILE_START; i < CELL_END; i++ ) {
       if( !mDesk[i].isEmpty() ) {
@@ -158,7 +152,7 @@ class Desk implements FreecellConstants {
     }
     return true;
   }
-  
+
   // MOVE is defined as:
   // move = source_pile_index * DESK_SIZE + destination_pile_index
   void move_card( int move ) {
@@ -166,7 +160,7 @@ class Desk implements FreecellConstants {
     int dst = move % DESK_SIZE;
     mDesk[dst].add( mDesk[src].pop() );
   }
-  
+
   void move_cards( Vector< Integer > moves ) {
     for( int move : moves ) {
       int src = move / DESK_SIZE;
@@ -174,7 +168,7 @@ class Desk implements FreecellConstants {
       mDesk[dst].add( mDesk[src].pop() );
     }
   }
-  
+
   void move_cards_reverse( Vector< Integer > moves ) {
     int i = moves.size();
     while( i --> 0 ) {
@@ -184,7 +178,7 @@ class Desk implements FreecellConstants {
       mDesk[dst].add( mDesk[src].pop() );
     }
   }
-  
+
   void auto_move_to_bases( Vector< Integer > moves ) {
     boolean ok = true;
     while( ok ) {
@@ -204,7 +198,7 @@ class Desk implements FreecellConstants {
             rx = mDesk[BASE_START +   SPADES].size();
             ry = mDesk[BASE_START +    CLUBS].size();
           }
-          
+
           if( rank == ro && rank < rx + 2 && rank < ry + 2 ) {
             ok = true;
             // move it to the base
@@ -215,12 +209,12 @@ class Desk implements FreecellConstants {
       }
     }
   }
-  
+
   Vector< Integer > get_moves() {
-    Vector< Integer > moves = new Vector();
+    Vector< Integer > moves = new Vector< Integer >();
     int empty_pile = get_empty_pile();
     int empty_cell = get_empty_cell();
-  
+
     for( int i = PILE_START; i < CELL_END; i++ ) {
       int l = mDesk[i].size();
       if( l > 0 ) {
@@ -274,13 +268,14 @@ class Desk implements FreecellConstants {
 
 };
 
+@SuppressWarnings("unchecked")
 public class freecell_v1 implements FreecellConstants {
-  
+
   static int DESK_NUM_MAX = 8000;
   static int DESK_NUM_MIN = 2000;
-  
+
   static boolean _debug = false;
-  
+
   static {
     for( int r = 0; r < RANK_NUM; r++ ) {
       for( int s = 0; s < SUIT_NUM; s++ ) {
@@ -288,43 +283,43 @@ public class freecell_v1 implements FreecellConstants {
       }
     }
   }
-  
+
   static void add_to_set_at( Map< Integer, Set< Integer > > src, Integer i, Integer j ) {
     if( !src.containsKey( i ) ) {
-      src.put( i, new HashSet() );
+      src.put( i, new HashSet< Integer >() );
     }
     src.get( i ).add( j );
   }
-  
+
   static void split( Desk desk, Vector< Vector< Integer > > moves, int threshold,
     Vector< Vector< Integer > > moves_a, Vector< Vector< Integer > > moves_b ) {
-    
-    Map< Integer, Set< Integer > > strategy = new HashMap();
-    
+
+    Map< Integer, Set< Integer > > strategy = new HashMap< Integer, Set< Integer > >();
+
     int i = moves.size();
     while( i --> 0 ) {
       Vector< Integer > m = moves.get( i );
       desk.move_cards( m );
       desk.auto_move_to_bases( m );
-      
+
       int n_1 = desk.count_empty_cells();
       int n_2 = desk.get_progress();
-      
+
       add_to_set_at( strategy, n_1 - n_2, i );
 
       desk.move_cards_reverse( m );
     }
-    
+
     Object[] keys = strategy.keySet().toArray();
     Arrays.sort( keys );
-    
+
     i = keys.length;
     Set< Integer > mask_a = strategy.remove( keys[ --i ] );
-     
+
     while( mask_a.size() < threshold ) {
       mask_a.addAll( strategy.remove( keys[ --i ] ) );
     }
-    
+
     i = moves.size();
     while( i --> 0 ) {
       if( mask_a.contains( Integer.valueOf( i ) ) ) {
@@ -334,16 +329,16 @@ public class freecell_v1 implements FreecellConstants {
       }
     }
   }
-  
+
   static Vector< Integer > test_moves( Desk desk,
     Vector< Vector< Integer > > src_moves, Map< Integer, Set< String > > src_done,
     Vector< Integer > solution,
     Vector< Vector< Integer > > dst_moves, Map< Integer, Set< String > > dst_done ) {
-      
+
     for( Vector< Integer > moves : src_moves ) {
       desk.move_cards( moves );
       desk.auto_move_to_bases( moves );
-        
+
       if( solution == null || moves.size() < solution.size() ) {
         if( desk.is_empty() ) {
           if( _debug ) {
@@ -356,43 +351,43 @@ public class freecell_v1 implements FreecellConstants {
             if( src_done.containsKey( base_key ) ) {
               dst_done.put( base_key, src_done.get( base_key ) );
             } else {
-              dst_done.put( base_key, new HashSet() );
+              dst_done.put( base_key, new HashSet< String >() );
             }
           }
-        
+
           String pile_key = desk.get_pile_key();
           if( !dst_done.get( base_key ).contains( pile_key ) ) {
             dst_done.get( base_key ).add( pile_key );
 
             for( Integer move : desk.get_moves() ) {
-              Vector< Integer > new_moves = (Vector) moves.clone();
+              Vector< Integer > new_moves = (Vector< Integer >) moves.clone();
               new_moves.add( move );
-              
+
               dst_moves.add( new_moves );
             }
           }
         }
       }
-        
+
       desk.move_cards_reverse( moves ); // restore our desk
     }
 
     return solution;
   }
-  
+
   static Vector< Integer > get_solution( Desk desk ) {
-    Vector< Vector < Integer > > src_moves = new Vector();
+    Vector< Vector < Integer > > src_moves = new Vector< Vector < Integer > >();
     for( Integer move : desk.get_moves() ) {
-      Vector < Integer > m = new Vector();
+      Vector< Integer > m = new Vector< Integer >();
       m.add( move );
       src_moves.add( m );
     }
-    Map< Integer, Set< String > > src_done = new HashMap(); 
-    
+    Map< Integer, Set< String > > src_done = new HashMap< Integer, Set< String > >();
+
     Stack reserve = new Stack();
-    
+
     Vector< Integer > solution = null;
-    
+
     while( true ) {
       while( !src_moves.isEmpty() ) {
         if( _debug ) {
@@ -402,7 +397,9 @@ public class freecell_v1 implements FreecellConstants {
           if( _debug ) {
             System.out.println( "Splitting..." );
           }
-          Vector< Vector< Integer > > a = new Vector(), b = new Vector();
+          Vector< Vector< Integer > >
+            a = new Vector< Vector< Integer > >(),
+            b = new Vector< Vector< Integer > >();
           split( desk, src_moves, DESK_NUM_MIN, a, b );
           reserve.add( b );
           reserve.add( src_done );
@@ -412,14 +409,14 @@ public class freecell_v1 implements FreecellConstants {
           }
         }
 
-        Vector< Vector < Integer > > dst_moves = new Vector();
-        Map< Integer, Set< String > > dst_done = new HashMap();
-        
+        Vector< Vector < Integer > > dst_moves = new Vector< Vector < Integer > >();
+        Map< Integer, Set< String > > dst_done = new HashMap< Integer, Set< String > >();
+
         solution  = test_moves( desk, src_moves, src_done, solution, dst_moves, dst_done );
         src_moves = dst_moves;
         src_done  = dst_done;
       }
-      
+
       if( solution != null || reserve.isEmpty() ) {
         break;
       } else {
@@ -430,22 +427,22 @@ public class freecell_v1 implements FreecellConstants {
         src_moves = (Vector< Vector < Integer > >) reserve.pop();
       }
     }
-    
+
     return solution;
   }
-  
+
   public static void main( String[] args ) {
     _debug = true;
     long job_time = System.currentTimeMillis();
-    
+
     Desk x = new Desk();
     for( int i = PILE_START; i < PILE_END; i++ ) {
       x.deal_by_number( i );
       System.out.println( x.get_pile_key() );
     }
-    
+
     Vector< Integer > moves = get_solution( x );
-    
+
     System.out.println( "o-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=" );
     System.out.println( String.format( "| Total: %d playfield moves", moves.size() - CARD_NUM ) );
     System.out.println( "o-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=" );
@@ -473,5 +470,4 @@ public class freecell_v1 implements FreecellConstants {
     job_time = (System.currentTimeMillis() - job_time) / 1000;
     System.out.println( String.format( "Job has taken %d min %d sec." , job_time / 60, job_time % 60 ) );
   }
-
 };
