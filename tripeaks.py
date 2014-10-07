@@ -1,4 +1,4 @@
-'''
+"""
 Tri Peaks is a solitaire card game that is played with a 52-card standard deck.
 The object is to clear 3 peaks made up of cards.
 Over 90% of all the games dealt are completely solvable.
@@ -39,13 +39,14 @@ cards on the tableau.
 
 The game is won if all three peaks are cleared.
 
-'''
+"""
 
 _debug = __name__ == '__main__'
 
 if _debug:
-  import time
-  job_time = time.clock()
+    import time
+
+    job_time = time.clock()
 
 # Suits
 SUITS = 'SDCH'
@@ -64,15 +65,15 @@ CARD_NUM = SUIT_NUM * RANK_NUM
 
 # form peaks as rows of cards
 # pile_0   O . . O . . O
-#          |\    |\    |\
+# |\    |\    |\
 # pile_1   O O . O O . O O
-#          |\|\  |\|\  |\|\
+# |\|\  |\|\  |\|\
 # pile_2   O O O O O O O O O
-#          |\|\|\|\|\|\|\|\|\
+# |\|\|\|\|\|\|\|\|\
 # pile_3   A A A A A A A A A A
 
-PILE_NUM = 4    # rows that form peaks
-DESK_SIZE = PILE_NUM + 1 # peaks + a stock pile
+PILE_NUM = 4  # rows that form peaks
+DESK_SIZE = PILE_NUM + 1  # peaks + a stock pile
 
 STOCK_SIZE = 24
 STOCK_POS = PILE_NUM
@@ -82,212 +83,291 @@ PILE_RANGE = [3, 6, 9, 10, STOCK_SIZE]
 
 EMPTY_CELL = -1
 
+
 def new_desk():
-  return [[] for x in DESK_RANGE]
+    return [[] for x in DESK_RANGE]
+
 
 def clone(desk):
-  return [pile[:] for pile in desk]
+    return [pile[:] for pile in desk]
+
 
 def reset(desk):
-  for pile in desk:
-    del pile[:]
+    for pile in desk:
+        del pile[:]
+
 
 def make_peaks(desk):
-  ''' inserts empty cells to make the peaks '''
-  desk[0].insert(2, EMPTY_CELL)
-  desk[0].insert(2, EMPTY_CELL)
-  desk[0].insert(1, EMPTY_CELL)
-  desk[0].insert(1, EMPTY_CELL)
-  
-  desk[1].insert(4, EMPTY_CELL)
-  desk[1].insert(2, EMPTY_CELL)
-  
-  desk[STOCK_POS].insert(-1, EMPTY_CELL) # stock pointer
+    """ inserts empty cells to make the peaks """
+    desk[0].insert(2, EMPTY_CELL)
+    desk[0].insert(2, EMPTY_CELL)
+    desk[0].insert(1, EMPTY_CELL)
+    desk[0].insert(1, EMPTY_CELL)
+
+    desk[1].insert(4, EMPTY_CELL)
+    desk[1].insert(2, EMPTY_CELL)
+
+    desk[STOCK_POS].insert(-1, EMPTY_CELL)  # stock pointer
+
 
 def is_empty(desk):
-  for c in desk[0]:
-    if c != EMPTY_CELL:
-      return False
-  return True
+    for c in desk[0]:
+        if c != EMPTY_CELL:
+            return False
+    return True
+
 
 def deal(desk, cascades):
-  reset(desk)
-  for src, dst in zip(cascades, desk):
-    for i in range(0, len(src), 2):
-      dst.append(CARDS.index(src[i:i+2]))
-  make_peaks(desk)
+    reset(desk)
+    for src, dst in zip(cascades, desk):
+        for i in range(0, len(src), 2):
+            dst.append(CARDS.index(src[i:i + 2]))
+    make_peaks(desk)
+
 
 def deal_by_number(desk, n):
-  reset(desk)
-  # use LCG algorithm to pick up cards from the deck
-  # http://en.wikipedia.org/wiki/Linear_congruential_generator
-  m = 2**31
-  a = 1103515245
-  c = 12345
-  cards = range(CARD_NUM)
-  for i in DESK_RANGE:
-    while len(desk[i]) < PILE_RANGE[i]:
-      n = (a * n + c) % m
-      desk[i].append(cards.pop(n % len(cards)))
-  make_peaks(desk)
+    reset(desk)
+    # use LCG algorithm to pick up cards from the deck
+    # http://en.wikipedia.org/wiki/Linear_congruential_generator
+    m = 2 ** 31
+    a = 1103515245
+    c = 12345
+    cards = range(CARD_NUM)
+    for i in DESK_RANGE:
+        while len(desk[i]) < PILE_RANGE[i]:
+            n = (a * n + c) % m
+            desk[i].append(cards.pop(n % len(cards)))
+    make_peaks(desk)
+
 
 def desk_to_str(desk):
-  return ''.join(str(pile) for pile in desk)
+    return ''.join(str(pile) for pile in desk)
+
+
+def stock_to_str(desk):
+    d = desk[STOCK_POS]
+    return str(d[d.index(EMPTY_CELL) + 1:])
+
 
 # MOVE is defined as:
-# move = src_pile + DESK_SIZE * src_pile_index
+# move = src_pile + DESK_SIZE * src_index
 
 def move_card(desk, move):
-  src_pile_index = move // DESK_SIZE
-  src_pile       = move  % DESK_SIZE
-  
-  if src_pile == STOCK_POS:
-    # move stock pointer to the left
-    assert(desk[STOCK_POS].index(EMPTY_CELL) == src_pile_index + 1)
-    desk[STOCK_POS][src_pile_index], desk[STOCK_POS][src_pile_index + 1] = desk[STOCK_POS][src_pile_index + 1], desk[STOCK_POS][src_pile_index]
-  else:
-    # move the card into the stock behind the stock pointer
-    dst = desk[STOCK_POS].index(EMPTY_CELL) + 1
-    desk[STOCK_POS].insert(dst, desk[src_pile][src_pile_index])
-    desk[src_pile][src_pile_index] = EMPTY_CELL
+    src_index = move // DESK_SIZE
+    src_pile = move % DESK_SIZE
+
+    s = desk[STOCK_POS]
+
+    if src_pile == STOCK_POS:
+        # move stock pointer to the left
+        assert (s.index(EMPTY_CELL) == src_index + 1)
+        s[src_index], s[src_index + 1] = s[src_index + 1], s[src_index]
+    else:
+        # move the card into the stock behind the stock pointer
+        dst = s.index(EMPTY_CELL) + 1
+        s.insert(dst, desk[src_pile][src_index])
+        desk[src_pile][src_index] = EMPTY_CELL
+
 
 def move_cards(desk, moves):
-  for move in moves:
-      src_pile_index = move // DESK_SIZE
-      src_pile       = move  % DESK_SIZE
-      
-      if src_pile == STOCK_POS:
-        # move the stock pointer to the left
-        assert(desk[STOCK_POS].index(EMPTY_CELL) == src_pile_index + 1)
-        desk[STOCK_POS][src_pile_index], desk[STOCK_POS][src_pile_index + 1] = desk[STOCK_POS][src_pile_index + 1], desk[STOCK_POS][src_pile_index]
-      else:
-        # move the card into the stock behind the stock pointer
-        dst = desk[STOCK_POS].index(EMPTY_CELL) + 1
-        desk[STOCK_POS].insert(dst, desk[src_pile][src_pile_index])
-        desk[src_pile][src_pile_index] = EMPTY_CELL
+    s = desk[STOCK_POS]
+    for move in moves:
+        src_index = move // DESK_SIZE
+        src_pile = move % DESK_SIZE
+
+        if src_pile == STOCK_POS:
+            # move stock pointer to the left
+            assert (s.index(EMPTY_CELL) == src_index + 1)
+            s[src_index], s[src_index + 1] = s[src_index + 1], s[src_index]
+        else:
+            # move the card into the stock behind the stock pointer
+            dst = s.index(EMPTY_CELL) + 1
+            s.insert(dst, desk[src_pile][src_index])
+            desk[src_pile][src_index] = EMPTY_CELL
+
 
 def move_cards_reverse(desk, moves):
-  for move in moves[::-1]:
-      dst_pile_index = move // DESK_SIZE
-      dst_pile       = move  % DESK_SIZE
-      
-      if dst_pile == STOCK_POS
-        # move the stock pointer to the right
-        assert(desk[STOCK_POS].index(EMPTY_CELL) == dst_pile_index - 1)
-        desk[STOCK_POS][dst_pile_index], desk[STOCK_POS][dst_pile_index - 1] = desk[STOCK_POS][dst_pile_index - 1], desk[STOCK_POS][dst_pile_index]
-      else:
-        # move the card behind the stock pointer into the peaks
-        src = desk[STOCK_POS].index(EMPTY_CELL) + 1
-        desk[dst_pile][dst_pile_index] = desk[STOCK_POS].pop(src)
+    s = desk[STOCK_POS]
+    for move in moves[::-1]:
+        dst_index = move // DESK_SIZE
+        dst_pile = move % DESK_SIZE
+
+        if dst_pile == STOCK_POS:
+            # move the stock pointer to the right
+            assert (s.index(EMPTY_CELL) == dst_index)
+            s[dst_index], s[dst_index + 1] = s[dst_index + 1], s[dst_index]
+        else:
+            # move the card behind the stock pointer into the peaks
+            src = s.index(EMPTY_CELL) + 1
+            desk[dst_pile][dst_index] = s.pop(src)
+
 
 def is_card_playable(desk, pile, index):
-  card = desk[pile][index]
-  if card == EMPTY_CELL:
-    return False
-  if pile + 1 == PILE_NUM:
-    return True
-  else:
-    return (desk[pile + 1][index    ] == EMPTY_CELL and
-            desk[pile + 1][index + 1] == EMPTY_CELL)
+    card = desk[pile][index]
+    if card == EMPTY_CELL:
+        return False
+    if pile + 1 == PILE_NUM:
+        return True
+    else:
+        return (desk[pile + 1][index] == EMPTY_CELL and
+                desk[pile + 1][index + 1] == EMPTY_CELL)
 
-def get_moves(desk, stock_index):
-  moves = []
-  
-  stock_card = desk[STOCK_POS][stock_index]
-  stock_suit = stock_card  % SUIT_NUM
-  stock_rank = stock_card // SUIT_NUM
-  
-  for p in range(PILE_NUM):
-    for i in range(len(desk[i])):
-      if is_card_playable(desk, p, i):
-        card = desk[p][i]
-        suit = card  % SUIT_NUM
-        rank = card // SUIT_NUM
-        
-        if abs(stock_rank - rank) == 1:
-          moves.append(stock_index + STOCK_SIZE * (p + PILE_NUM * i))
-  return moves
 
-def test_moves(desk, stock_index, src_moves, src_done, solution):
-  dst_moves = []
-  dst_done = src_done
-    
-  for moves in src_moves:
-    move_cards(desk, moves)
+def get_moves(desk):
+    moves = []
 
-    if solution == None or len(moves) < len(solution):
-      if is_empty(desk):
-        if _debug:
-          print "Found %d moves solution" % len(moves)
-        solution = moves
-      else:
-        desk_key = desk_to_str(desk)
-        if desk_key not in dst_done:
-          dst_done.add(desk_key)
+    stock_index = desk[STOCK_POS].index(EMPTY_CELL) + 1
+    stock_card = desk[STOCK_POS][stock_index]
+    stock_suit = stock_card % SUIT_NUM
+    stock_rank = stock_card // SUIT_NUM
 
-          for move in get_moves(desk, stock_index):
-            new_moves = moves[:]
-            new_moves.append(move)
-            
-            dst_moves.append(new_moves)
-      
-    move_cards_reverse(desk, moves) # restore our desk
+    # get the next card from the stock, if there's any left
+    if stock_index > 1:
+        moves.append(STOCK_POS + DESK_SIZE * (stock_index - 2))
 
-  return solution, dst_moves, dst_done
+    for p in range(PILE_NUM):
+        for i in range(len(desk[p])):
+            if is_card_playable(desk, p, i):
+                card = desk[p][i]
+                suit = card % SUIT_NUM
+                rank = card // SUIT_NUM
+
+                if abs(stock_rank - rank) == 1:
+                    moves.append(p + DESK_SIZE * i)
+    return moves
+
+
+def test_moves(desk, src_moves, solution):
+    dst_moves = []
+#    dst_done = src_done
+
+    for moves in src_moves:
+        move_cards(desk, moves)
+
+        if solution == None or len(moves) < len(solution):
+            if is_empty(desk):
+                if _debug:
+                    print "Found %d moves solution" % len(moves)
+                solution = moves
+            else:
+#                desk_key = stock_to_str(desk)
+#                if desk_key not in dst_done:
+#                    dst_done.add(desk_key)
+
+                    for move in get_moves(desk):
+                        new_moves = moves[:]
+                        new_moves.append(move)
+
+                        dst_moves.append(new_moves)
+#                else:
+#                    print "apoj"
+
+        move_cards_reverse(desk, moves)  # restore our desk
+
+    return solution, dst_moves  #, dst_done
+
+
+DESK_NUM_MAX = 30000
+DESK_NUM_MIN = 3000
+
+
+def add_to_set_at(src, i, j):
+    if i not in src:
+        src[i] = set()
+    src[i].add(j)
+
+
+def split(desk, moves, threshold):
+    strategy = {}
+
+    for i, m in enumerate(moves):
+        move_cards(desk, m)
+
+        # the less cards from the stock is used the better
+        n = desk[STOCK_POS].index(EMPTY_CELL)
+        add_to_set_at(strategy, n, i)
+
+        move_cards_reverse(desk, m)
+
+    keys = strategy.keys()
+    keys.sort()
+
+    mask_a = strategy.pop(keys.pop())
+    while len(mask_a) < threshold:
+        mask_a |= strategy.pop(keys.pop())
+
+    mask_b = set(xrange(len(moves))) - mask_a
+    return [moves[i] for i in mask_a], [moves[i] for i in mask_b]
+
 
 def get_solution(desk):
-  stock_index = len(desk[STOCK_POS])
-  moves = None
-  while stock_index > 0 and not moves:
-    stock_index -= 1
-    moves = get_moves(desk, stock_index)
-  
-  src_moves = [[move] for move in moves]
-  src_done = set()
-  
-  solution = None
-  
-  while True:
-    while src_moves:
-      if _debug:
-        print len(src_moves)
+    """
 
-      stock_index -= 1
-      solution, src_moves, src_done = test_moves(desk, stock_index, src_moves, src_done, solution)
-    
-    if solution:
-      break
-  return solution
+    :param desk:
+    :return solution:
+    """
+    src_moves = [[move] for move in get_moves(desk)]
+    #src_done = set()
+
+    reserve = []
+
+    solution = None
+
+    while True:
+        while src_moves:
+            if _debug:
+                print len(src_moves)
+            if len(src_moves) > DESK_NUM_MAX:
+                if _debug:
+#                    print "done: ", len(src_done)
+                    print "Splitting..."
+
+                a, b = split(desk, src_moves, DESK_NUM_MIN)
+                reserve.append(b)
+                src_moves = a
+                if _debug:
+                    print "Split #%d -> %d+%d" % (len(reserve), len(a), len(b))
+                    move_cards(desk, a[0])
+                    print(desk_to_str(desk))
+                    print stock_to_str(desk)
+                    move_cards_reverse(desk, a[0])
+
+            solution, src_moves = test_moves(desk, src_moves, solution)
+
+        if solution and not reserve:
+            break
+        else:
+            if _debug:
+                print "Step back to %d split" % len(reserve)
+            src_moves = reserve.pop()
+    return solution
+
 
 if _debug:
-  x = new_desk()
+    x = new_desk()
 
-  #~ deal(x, (s.rstrip().upper() for s in file("deal_001.txt")))
-  for i in PILE_RANGE:
-    deal_by_number(x, i)
+    # ~ deal(x, (s.rstrip().upper() for s in file("deal_001.txt")))
+    deal_by_number(x, 22)
+#    deal(x, ("2C2H7C", "2D3SQS8H2S5H", "TD3D5STC8SAHTHTS4S", "3C4H6D8D8CAC9SKSAD9D",
+#             "KH9HJC6C9C6S3HKD4D5DQCJDJS7DQH5C7S7HJHKCQD4CAS6H"))
     print(desk_to_str(x))
 
-  moves = get_solution(x)
+    moves = get_solution(x)
 
-  print "o" + "-=" * 25
-  print "| Total: %d playfield moves" % (len(moves) - CARD_NUM)
-  print "o" + "-=" * 25
+    print "o" + "-=" * 25
+    print "| Total: %d moves" % (len(moves))
+    print "o" + "-=" * 25
 
-  for i, move in enumerate(moves):
-    a = move // DESK_SIZE
-    b = move  % DESK_SIZE
-    card = CARDS[x[a][-1]]
-    dest = "BASE"
-    if CELL_START <= b < CELL_END:
-      dest = "cell"
-    elif PILE_START <= b < PILE_END:
-      if x[b]:
-        dest = CARDS[x[b][-1]]
-      else:
-        dest = "pile"
+    for i, move in enumerate(moves):
+        index = move // DESK_SIZE
+        pile = move % DESK_SIZE
+        card = CARDS[x[pile][index]]
+        dest = "stock" if pile == STOCK_POS else "peak"
 
-    print "%d: %s -> %s" % (i + 1, card, dest)
-    move_card(x, move)  
+        print "%d: %s -> %s" % (i + 1, card, dest)
+        move_card(x, move)
 
-  job_time = int(time.clock() - job_time)
-  print "Job has taken %d min %d sec." % (job_time // 60, job_time % 60)
+    print desk_to_str(x)
+
+    job_time = int(time.clock() - job_time)
+    print "Job has taken %d min %d sec." % (job_time // 60, job_time % 60)
