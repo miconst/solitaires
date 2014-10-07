@@ -72,10 +72,10 @@ CARD_NUM = SUIT_NUM * RANK_NUM
 # pile_3   A A A A A A A A A A
 
 PILE_NUM = 4    # rows that form peaks
-DESK_SIZE = PILE_NUM + 1 # + stock pile
+DESK_SIZE = PILE_NUM + 1 # peaks + a stock pile
 
 STOCK_SIZE = 24
-STOCK_POS = 4
+STOCK_POS = PILE_NUM
 
 DESK_RANGE = range(DESK_SIZE)
 PILE_RANGE = [3, 6, 9, 10, STOCK_SIZE]
@@ -92,7 +92,7 @@ def reset(desk):
   for pile in desk:
     del pile[:]
 
-def split_peaks(desk):
+def make_peaks(desk):
   ''' inserts empty cells to make the peaks '''
   desk[0].insert(2, EMPTY_CELL)
   desk[0].insert(2, EMPTY_CELL)
@@ -101,6 +101,8 @@ def split_peaks(desk):
   
   desk[1].insert(4, EMPTY_CELL)
   desk[1].insert(2, EMPTY_CELL)
+  
+  desk[STOCK_POS].insert(-1, EMPTY_CELL) # stock pointer
 
 def is_empty(desk):
   for c in desk[0]:
@@ -113,7 +115,7 @@ def deal(desk, cascades):
   for src, dst in zip(cascades, desk):
     for i in range(0, len(src), 2):
       dst.append(CARDS.index(src[i:i+2]))
-  split_peaks(desk)
+  make_peaks(desk)
 
 def deal_by_number(desk, n):
   reset(desk)
@@ -127,45 +129,56 @@ def deal_by_number(desk, n):
     while len(desk[i]) < PILE_RANGE[i]:
       n = (a * n + c) % m
       desk[i].append(cards.pop(n % len(cards)))
-  split_peaks(desk)
+  make_peaks(desk)
 
 def desk_to_str(desk):
   return ''.join(str(pile) for pile in desk)
 
 # MOVE is defined as:
-# move = stock_index + STOCK_SIZE * (src_pile + PILE_NUM * src_pile_index)
+# move = src_pile + DESK_SIZE * src_pile_index
 
 def move_card(desk, move):
-  src = move // STOCK_SIZE
-  dst = move  % STOCK_SIZE
+  src_pile_index = move // DESK_SIZE
+  src_pile       = move  % DESK_SIZE
   
-  src_pile       = src // PILE_NUM
-  src_pile_index = src  % PILE_NUM
-  
-  desk[STOCK_POS].insert(dst, desk[src_pile][src_pile_index])
-  desk[src_pile][src_pile_index] = EMPTY_CELL
-
-def move_cards(desk, moves):
-  for move in moves:
-    src = move // STOCK_SIZE
-    dst = move  % STOCK_SIZE
-    
-    src_pile       = src // PILE_NUM
-    src_pile_index = src  % PILE_NUM
-      
+  if src_pile == STOCK_POS:
+    # move stock pointer to the left
+    assert(desk[STOCK_POS].index(EMPTY_CELL) == src_pile_index + 1)
+    desk[STOCK_POS][src_pile_index], desk[STOCK_POS][src_pile_index + 1] = desk[STOCK_POS][src_pile_index + 1], desk[STOCK_POS][src_pile_index]
+  else:
+    # move the card into the stock behind the stock pointer
+    dst = desk[STOCK_POS].index(EMPTY_CELL) + 1
     desk[STOCK_POS].insert(dst, desk[src_pile][src_pile_index])
     desk[src_pile][src_pile_index] = EMPTY_CELL
 
+def move_cards(desk, moves):
+  for move in moves:
+      src_pile_index = move // DESK_SIZE
+      src_pile       = move  % DESK_SIZE
+      
+      if src_pile == STOCK_POS:
+        # move the stock pointer to the left
+        assert(desk[STOCK_POS].index(EMPTY_CELL) == src_pile_index + 1)
+        desk[STOCK_POS][src_pile_index], desk[STOCK_POS][src_pile_index + 1] = desk[STOCK_POS][src_pile_index + 1], desk[STOCK_POS][src_pile_index]
+      else:
+        # move the card into the stock behind the stock pointer
+        dst = desk[STOCK_POS].index(EMPTY_CELL) + 1
+        desk[STOCK_POS].insert(dst, desk[src_pile][src_pile_index])
+        desk[src_pile][src_pile_index] = EMPTY_CELL
+
 def move_cards_reverse(desk, moves):
   for move in moves[::-1]:
-    dst = move // STOCK_SIZE
-    src = move  % STOCK_SIZE
-  
-    dst_pile       = dst // PILE_NUM
-    dst_pile_index = dst  % PILE_NUM
-  
-    desk[dst_pile][dst_pile_index] = desk[STOCK_POS][src]
-    del desk[STOCK_POS][src]
+      dst_pile_index = move // DESK_SIZE
+      dst_pile       = move  % DESK_SIZE
+      
+      if dst_pile == STOCK_POS
+        # move the stock pointer to the right
+        assert(desk[STOCK_POS].index(EMPTY_CELL) == dst_pile_index - 1)
+        desk[STOCK_POS][dst_pile_index], desk[STOCK_POS][dst_pile_index - 1] = desk[STOCK_POS][dst_pile_index - 1], desk[STOCK_POS][dst_pile_index]
+      else:
+        # move the card behind the stock pointer into the peaks
+        src = desk[STOCK_POS].index(EMPTY_CELL) + 1
+        desk[dst_pile][dst_pile_index] = desk[STOCK_POS].pop(src)
 
 def is_card_playable(desk, pile, index):
   card = desk[pile][index]
@@ -212,7 +225,7 @@ def test_moves(desk, stock_index, src_moves, src_done, solution):
         if desk_key not in dst_done:
           dst_done.add(desk_key)
 
-          for move in get_moves(desk):
+          for move in get_moves(desk, stock_index):
             new_moves = moves[:]
             new_moves.append(move)
             
@@ -223,7 +236,13 @@ def test_moves(desk, stock_index, src_moves, src_done, solution):
   return solution, dst_moves, dst_done
 
 def get_solution(desk):
-  src_moves = [[move] for move in get_moves(desk)]
+  stock_index = len(desk[STOCK_POS])
+  moves = None
+  while stock_index > 0 and not moves:
+    stock_index -= 1
+    moves = get_moves(desk, stock_index)
+  
+  src_moves = [[move] for move in moves]
   src_done = set()
   
   solution = None
@@ -233,7 +252,8 @@ def get_solution(desk):
       if _debug:
         print len(src_moves)
 
-      solution, src_moves, src_done = test_moves(desk, src_moves, src_done, solution)
+      stock_index -= 1
+      solution, src_moves, src_done = test_moves(desk, stock_index, src_moves, src_done, solution)
     
     if solution:
       break
