@@ -232,7 +232,8 @@ def get_moves(desk):
                 suit = card % SUIT_NUM
                 rank = card // SUIT_NUM
 
-                if abs(stock_rank - rank) == 1:
+                x = abs(stock_rank - rank)
+                if x == 1 or x + 1 == RANK_NUM:
                     moves.append(p + DESK_SIZE * i)
     return moves
 
@@ -267,8 +268,8 @@ def test_moves(desk, src_moves, solution):
     return solution, dst_moves  #, dst_done
 
 
-DESK_NUM_MAX = 30000
-DESK_NUM_MIN = 3000
+DESK_NUM_MAX = 10000
+DESK_NUM_MIN = 1000
 
 
 def add_to_set_at(src, i, j):
@@ -334,7 +335,7 @@ def get_solution(desk):
 
             solution, src_moves = test_moves(desk, src_moves, solution)
 
-        if solution and not reserve:
+        if solution or not reserve:
             break
         else:
             if _debug:
@@ -348,8 +349,13 @@ if _debug:
 
     # ~ deal(x, (s.rstrip().upper() for s in file("deal_001.txt")))
     deal_by_number(x, 22)
-#    deal(x, ("2C2H7C", "2D3SQS8H2S5H", "TD3D5STC8SAHTHTS4S", "3C4H6D8D8CAC9SKSAD9D",
-#             "KH9HJC6C9C6S3HKD4D5DQCJDJS7DQH5C7S7HJHKCQD4CAS6H"))
+    deal(x, ("2C2H7C", "2D3SQS8H2S5H", "TD3D5STC8SAHTHTS4S", "3C4H6D8D8CAC9SKSAD9D",
+             "KH9HJC6C9C6S3HKD4D5DQCJDJS7DQH5C7S7HJHKCQD4CAS6H"))
+    deal(x, ("5CKD9D", "TD2CTH8H6D9S", "4CKHAHACQH4D8CTS3H", "6H2SQCADJSKS7CJCTC5D",
+             "4S3D9H6S2DJH4H5SJD8SQS3CQD7D9C3SAS7SKC2H8D7H5H6C"))
+    deal(x, ("AC4HQS", "9CJC7D9H5HJH", "KHKC2C8C4SAD3HTS2S", "6C9S3SQDTH7C4D4CAH8H",
+             "JD6D7HTDJS5DKD6HQH9DASTC8S6S5C5S2H8D3D7SKS2DQC3C"))
+
     print(desk_to_str(x))
 
     moves = get_solution(x)
