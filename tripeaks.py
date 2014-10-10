@@ -65,11 +65,11 @@ CARD_NUM = SUIT_NUM * RANK_NUM
 
 # form peaks as rows of cards
 # pile_0   O . . O . . O
-# |\    |\    |\
+#          |\    |\    |\
 # pile_1   O O . O O . O O
-# |\|\  |\|\  |\|\
+#          |\|\  |\|\  |\|\
 # pile_2   O O O O O O O O O
-# |\|\|\|\|\|\|\|\|\
+#          |\|\|\|\|\|\|\|\|\
 # pile_3   A A A A A A A A A A
 
 PILE_NUM = 4  # rows that form peaks
@@ -355,6 +355,8 @@ if _debug:
              "4S3D9H6S2DJH4H5SJD8SQS3CQD7D9C3SAS7SKC2H8D7H5H6C"))
     deal(x, ("AC4HQS", "9CJC7D9H5HJH", "KHKC2C8C4SAD3HTS2S", "6C9S3SQDTH7C4D4CAH8H",
              "JD6D7HTDJS5DKD6HQH9DASTC8S6S5C5S2H8D3D7SKS2DQC3C"))
+    deal(x, ("2S6S2D", "KC6C7SQHTH5C", "4HQCKDKS3C9D4SJC6H", "5D8D7HJDJH4C3DAH4D8H",
+             "9C5S6DQD2HAS3HKHTSADTDTC8S8CQS2C3S7C9SJS5H7D9HAC"))
 
     print(desk_to_str(x))
 
@@ -368,7 +370,7 @@ if _debug:
         index = move // DESK_SIZE
         pile = move % DESK_SIZE
         card = CARDS[x[pile][index]]
-        dest = "stock" if pile == STOCK_POS else "peak"
+        dest = "stock" if pile == STOCK_POS else "PEAK"
 
         print "%d: %s -> %s" % (i + 1, card, dest)
         move_card(x, move)
