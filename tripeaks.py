@@ -50,7 +50,7 @@ if _debug:
 
 # Suits
 SUITS = 'SDCH'
-SUIT_NUM = 4
+SUIT_NUM = len(SUITS)
 SPADES, DIAMONDS, CLUBS, HEARTS = range(SUIT_NUM)
 
 # Ranks
@@ -146,8 +146,27 @@ def desk_to_str(desk):
 
 def stock_to_str(desk):
     d = desk[STOCK_POS]
-    return str(d[d.index(EMPTY_CELL) + 1:])
+    x = [CARDS[c] for c in d[d.index(EMPTY_CELL) + 1:]]
+    return str(x)
 
+
+def desk_to_key(desk):
+  m = 0
+  for i in range(PILE_NUM):
+    for c in desk[i]:
+      if c != EMPTY_CELL:
+        m |= 1
+      m <<= 1
+
+  # stock position
+  i = desk[STOCK_POS].index(EMPTY_CELL)
+  m <<= 5 # 0 - 24
+  m |= i
+  
+  # last card
+  m <<= 6 # 0 - 52
+  m |= desk[STOCK_POS][i + 1]
+  return m
 
 # MOVE is defined as:
 # move = src_pile + DESK_SIZE * src_index
@@ -201,6 +220,28 @@ def move_cards_reverse(desk, moves):
             src = s.index(EMPTY_CELL) + 1
             desk[dst_pile][dst_index] = s.pop(src)
 
+def rate_moves(moves):
+  bonus = 100
+  total = 0
+  for move in moves:
+    pile = move % DESK_SIZE
+    if pile == STOCK_POS:
+      bonus = 100
+    else:
+      total += bonus
+      bonus += 200
+  return total
+
+def rate_desk(desk):
+  cards = len(desk[0]) - desk[0].count(EMPTY_CELL)
+  total = 0
+  if cards < 1:
+    total += 5000
+  if cards < 2:
+    total += 1000
+  if cards < 3:
+    total += 500
+  return total
 
 def is_card_playable(desk, pile, index):
     card = desk[pile][index]
@@ -212,7 +253,7 @@ def is_card_playable(desk, pile, index):
         return (desk[pile + 1][index] == EMPTY_CELL and
                 desk[pile + 1][index + 1] == EMPTY_CELL)
 
-
+ 
 def get_moves(desk):
     moves = []
 
@@ -235,37 +276,48 @@ def get_moves(desk):
                 x = abs(stock_rank - rank)
                 if x == 1 or x + 1 == RANK_NUM:
                     moves.append(p + DESK_SIZE * i)
+
     return moves
 
+class Solution:
+  def __init__(self):
+    self.win_moves = None
+    self.best_moves = None
+    self.points = 0
 
-def test_moves(desk, src_moves, solution):
+def test_moves(desk, src_moves, src_done, solution):
     dst_moves = []
-#    dst_done = src_done
 
     for moves in src_moves:
         move_cards(desk, moves)
 
-        if solution == None or len(moves) < len(solution):
-            if is_empty(desk):
-                if _debug:
-                    print "Found %d moves solution" % len(moves)
-                solution = moves
-            else:
-#                desk_key = stock_to_str(desk)
-#                if desk_key not in dst_done:
-#                    dst_done.add(desk_key)
+        if is_empty(desk):
+          n = rate_moves(moves) + rate_desk(desk)
+          if solution.win_moves == None or n > solution.points:
+            solution.win_moves = moves
+            solution.points = n
+            if _debug:
+              print "Found solution: %d points, %d moves" % (n, len(moves))
+        else:
+          key = desk_to_key(desk)
+          if key not in src_done:
+            src_done.add(key)
+            
+            next_moves = get_moves(desk)
+            if next_moves:
+              for move in next_moves:
+                new_moves = moves[:]
+                new_moves.append(move)
+                dst_moves.append(new_moves)
+            elif solution.win_moves == None:
+              n = rate_moves(moves) + rate_desk(desk)
+              if n > solution.points:
+                solution.best_moves = moves
+                solution.points = n
 
-                    for move in get_moves(desk):
-                        new_moves = moves[:]
-                        new_moves.append(move)
+        move_cards_reverse(desk, moves)  # restore
 
-                        dst_moves.append(new_moves)
-#                else:
-#                    print "apoj"
-
-        move_cards_reverse(desk, moves)  # restore our desk
-
-    return solution, dst_moves  #, dst_done
+    return dst_moves
 
 
 DESK_NUM_MAX = 10000
@@ -300,7 +352,6 @@ def split(desk, moves, threshold):
     mask_b = set(xrange(len(moves))) - mask_a
     return [moves[i] for i in mask_a], [moves[i] for i in mask_b]
 
-
 def get_solution(desk):
     """
 
@@ -308,40 +359,66 @@ def get_solution(desk):
     :return solution:
     """
     src_moves = [[move] for move in get_moves(desk)]
-    #src_done = set()
-
+    
+    src_done = set()
     reserve = []
 
     solution = None
+    partial_solution = None
+    n_max = -1
 
     while True:
         while src_moves:
-            if _debug:
-                print len(src_moves)
-            if len(src_moves) > DESK_NUM_MAX:
+          if _debug:
+              print "moves %10d\ttotal %10d" % (len(src_moves), len(src_done))
+          if len(src_moves) > DESK_NUM_MAX:
+              if _debug:
+                  print "Splitting..."
+
+              a, b = split(desk, src_moves, DESK_NUM_MIN)
+              reserve.append(b)
+              src_moves = a
+              if _debug:
+                  print "Split #%d -> %d+%d" % (len(reserve), len(a), len(b))
+
+          dst_moves = []
+
+          for moves in src_moves:
+            move_cards(desk, moves)
+
+            if is_empty(desk):
+              if solution == None or rate_moves(moves) > rate_moves(solution):
+                solution = moves
                 if _debug:
-#                    print "done: ", len(src_done)
-                    print "Splitting..."
+                  print "Found %d moves solution" % len(moves)
+            else:
+              m = desk_to_key(desk)
+              if m not in src_done:
+                src_done.add(m)
+          
+                next_moves = get_moves(desk)
+                if next_moves:
+                  for move in next_moves:
+                    new_moves = moves[:]
+                    new_moves.append(move)
+                    dst_moves.append(new_moves)
+                elif solution == None:
+                  n = rate_desk(desk) + rate_moves(moves)
+                  if n > n_max:
+                    n_max = n
+                    partial_solution = moves
 
-                a, b = split(desk, src_moves, DESK_NUM_MIN)
-                reserve.append(b)
-                src_moves = a
-                if _debug:
-                    print "Split #%d -> %d+%d" % (len(reserve), len(a), len(b))
-                    move_cards(desk, a[0])
-                    print(desk_to_str(desk))
-                    print stock_to_str(desk)
-                    move_cards_reverse(desk, a[0])
+            move_cards_reverse(desk, moves)  # restore
 
-            solution, src_moves = test_moves(desk, src_moves, solution)
+          src_moves = dst_moves
 
-        if solution or not reserve:
+        if not reserve:
             break
         else:
             if _debug:
                 print "Step back to %d split" % len(reserve)
             src_moves = reserve.pop()
-    return solution
+    return solution if solution else partial_solution
 
 
 if _debug:
@@ -356,12 +433,12 @@ if _debug:
     deal(x, ("AC4HQS", "9CJC7D9H5HJH", "KHKC2C8C4SAD3HTS2S", "6C9S3SQDTH7C4D4CAH8H",
              "JD6D7HTDJS5DKD6HQH9DASTC8S6S5C5S2H8D3D7SKS2DQC3C"))
     deal(x, ("2S6S2D", "KC6C7SQHTH5C", "4HQCKDKS3C9D4SJC6H", "5D8D7HJDJH4C3DAH4D8H",
-             "9C5S6DQD2HAS3HKHTSADTDTC8S8CQS2C3S7C9SJS5H7D9HAC"))
+            "9C5S6DQD2HAS3HKHTSADTDTC8S8CQS2C3S7C9SJS5H7D9HAC"))
 
     print(desk_to_str(x))
 
     moves = get_solution(x)
-
+    
     print "o" + "-=" * 25
     print "| Total: %d moves" % (len(moves))
     print "o" + "-=" * 25
@@ -376,6 +453,10 @@ if _debug:
         move_card(x, move)
 
     print desk_to_str(x)
+    
+    print "Total points %d" % (rate_desk(x) + rate_moves(moves))
+    message = "WIN!" if is_empty(x) else "unsolvable ;-("
+    print message
 
     job_time = int(time.clock() - job_time)
     print "Job has taken %d min %d sec." % (job_time // 60, job_time % 60)
